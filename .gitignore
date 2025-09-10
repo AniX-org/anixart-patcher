@@ -1,0 +1,15 @@
+.python-venv
+.venv
+apks
+original
+tools
+decompiled
+dist
+__pycache__
+keystore.jks
+help
+*.dev*
+dev.config.json
+release_patches
+release.config.json
+.TRASH
