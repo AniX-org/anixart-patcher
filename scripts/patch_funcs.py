@@ -1,7 +1,10 @@
+import importlib
 import json
+from typing import TypedDict
 from repo_types import PatchMetaData, RepoManifest
 from config import config, log
 from beaupy import select_multiple
+from rich.progress import BarColumn, Progress, TextColumn
 
 
 class Patch:
@@ -24,32 +27,71 @@ class Patch:
             return False
 
 
-def get_patch_list() -> list[PatchMetaData]:
-    patches: list[PatchMetaData] = []
-
-    for repo in config["repositories"]:
-        manifest: RepoManifest = json.load(
-            open(f"repos/{repo['uuid']}/manifest.json", "r", encoding="utf-8")
-        )
-        patches.extend(manifest["patches"])
-
-    return sorted(patches, key=lambda x: x["title"])
+def get_patch_list_from_repo(repo_uuid: str) -> list[PatchMetaData]:
+    return sorted(
+        json.load(open(f"repos/{repo_uuid}/manifest.json", "r", encoding="utf-8"))[
+            "patches"
+        ],
+        key=lambda x: x["title"],
+    )
 
 
-def find_patch(title: str) -> PatchMetaData:
-    return next((p for p in get_patch_list() if p["title"] == title), None)
+def find_patch_in_repo(repo_uuid: str, title: str) -> PatchMetaData:
+    return next(
+        (p for p in get_patch_list_from_repo(repo_uuid) if p["title"] == title), None
+    )
 
 
 def sort_patches_by_priority(patches: list[PatchMetaData]) -> list[PatchMetaData]:
     return sorted(patches, key=lambda x: x["priority"])
 
 
-def select_patches() -> list[PatchMetaData]:
+def select_patches_from_repo(repo_uuid: str) -> list[PatchMetaData]:
     return select_multiple(
-        get_patch_list(), preprocessor=lambda x: x["title"], tick_character="X"
+        get_patch_list_from_repo(repo_uuid),
+        preprocessor=lambda x: x["title"],
+        tick_character="X",
     )
 
 
-def apply_patches(patches: list[PatchMetaData], conf: dict) -> bool:
-    pass
-    # return all(patch.apply(conf) for patch in patches)
+progress = Progress(
+    "[progress.description]{task.description}",
+    TextColumn(text_format="{task.fields[patch]}"),
+    BarColumn(bar_width=None),
+    "[blue]{task.completed}/{task.total}",
+)
+
+
+class PatchStatus(TypedDict):
+    name: str
+    status: bool
+
+
+def apply_patches_from_repo(
+    repo_uuid: str, patches: list[PatchMetaData], globals: dict
+) -> tuple[RepoManifest, list[PatchStatus]]:
+    statuses: list[PatchStatus] = []
+    patches = sort_patches_by_priority(patches)
+
+    manifest: RepoManifest = json.load(
+        open(f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8")
+    )
+
+    with progress:
+        task = progress.add_task(
+            f"applying patches from {manifest['repo']['title']}:",
+            total=len(patches),
+            patch="",
+        )
+        for patch in patches:
+            progress.update(task, patch=patch["title"])
+            module = importlib.import_module(
+                f"repos.{repo_uuid.replace("-", "_")}.patches.{patch['filename'][:-3]}"
+            )
+            status = module.apply(patch["settings"], globals)
+            statuses.append({"name": patch["title"], "status": status})
+            progress.update(task, advance=1)
+
+        progress.update(task, description="patches applied", patch="")
+
+    return manifest, statuses
