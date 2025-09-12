@@ -29,8 +29,8 @@ progress = Progress(
 
 
 def check_if_cache_folder_exist():
-    if not os.path.exists(".cache"):
-        os.makedirs(".cache")
+    if not os.path.exists("repos"):
+        os.makedirs("repos")
 
 
 requests_log = logging.getLogger("urllib3.connectionpool")
@@ -49,15 +49,15 @@ def add_repository(url: str):
         exit(1)
     manifest: RepoManifest = response.json()
 
-    if os.path.exists(os.path.join(".cache", manifest["repo"]["uuid"])):
+    if os.path.exists(os.path.join("repos", manifest["repo"]["uuid"])):
         log.error(
             f"Repository {url}, already exists, if you want to update it, run `patcher.py --repo-update`"
         )
         exit(1)
 
-    os.makedirs(os.path.join(".cache", manifest["repo"]["uuid"]))
+    os.makedirs(os.path.join("repos", manifest["repo"]["uuid"]))
     with open(
-        os.path.join(".cache", manifest["repo"]["uuid"], "manifest.json"),
+        os.path.join("repos", manifest["repo"]["uuid"], "manifest.json"),
         "w",
         encoding="utf-8",
     ) as file:
@@ -91,7 +91,7 @@ def fetch_repositories():
 
             old_manifest: RepoManifest = {}
             with open(
-                os.path.join(".cache", repo["uuid"], "manifest.json"),
+                os.path.join("repos", repo["uuid"], "manifest.json"),
                 "r",
                 encoding="utf-8",
             ) as file:
@@ -99,13 +99,13 @@ def fetch_repositories():
 
             manifest: RepoManifest = response.json()
             with open(
-                os.path.join(".cache", manifest["repo"]["uuid"], "manifest.json"),
+                os.path.join("repos", manifest["repo"]["uuid"], "manifest.json"),
                 "w",
                 encoding="utf-8",
             ) as file:
                 json.dump(manifest, file, indent=4, ensure_ascii=False)
 
-            patches_path = os.path.join(".cache", manifest["repo"]["uuid"], "patches")
+            patches_path = os.path.join("repos", manifest["repo"]["uuid"], "patches")
             repo_base = repo["url"].removesuffix("manifest.json")
             os.makedirs(patches_path, exist_ok=True)
             for patch in manifest["patches"]:
