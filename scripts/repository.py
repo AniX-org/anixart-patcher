@@ -49,15 +49,16 @@ def add_repository(url: str):
         exit(1)
     manifest: RepoManifest = response.json()
 
-    if os.path.exists(os.path.join("repos", manifest["repo"]["uuid"])):
+    repo_path = os.path.join("repos", manifest["repo"]["uuid"].replace("-", "_"))
+    if os.path.exists(repo_path):
         log.error(
             f"Repository {url}, already exists, if you want to update it, run `patcher.py --repo-update`"
         )
         exit(1)
 
-    os.makedirs(os.path.join("repos", manifest["repo"]["uuid"]))
+    os.makedirs(repo_path)
     with open(
-        os.path.join("repos", manifest["repo"]["uuid"], "manifest.json"),
+        os.path.join(repo_path, "manifest.json"),
         "w",
         encoding="utf-8",
     ) as file:
@@ -81,6 +82,8 @@ def add_repository(url: str):
 def fetch_repositories():
     with console.status("[bold green]fetching repositories[/bold green]") as status:
         for repo in config["repositories"]:
+            repo_path = os.path.join("repos", repo["uuid"].replace("-", "_"))
+
             log.info(f"Updating repo: {repo['title']}")
             response = requests.get(repo["url"])
             if response.status_code != 200:
@@ -91,7 +94,7 @@ def fetch_repositories():
 
             old_manifest: RepoManifest = {}
             with open(
-                os.path.join("repos", repo["uuid"], "manifest.json"),
+                os.path.join(repo_path, "manifest.json"),
                 "r",
                 encoding="utf-8",
             ) as file:
@@ -99,26 +102,35 @@ def fetch_repositories():
 
             manifest: RepoManifest = response.json()
             with open(
-                os.path.join("repos", manifest["repo"]["uuid"], "manifest.json"),
+                os.path.join(repo_path, "manifest.json"),
                 "w",
                 encoding="utf-8",
             ) as file:
                 json.dump(manifest, file, indent=4, ensure_ascii=False)
 
-            patches_path = os.path.join("repos", manifest["repo"]["uuid"], "patches")
+            patches_path = os.path.join(repo_path, "patches")
             repo_base = repo["url"].removesuffix("manifest.json")
             os.makedirs(patches_path, exist_ok=True)
+
+            if not os.path.exists(os.path.join(patches_path, "__init__.py")):
+                with open(
+                    os.path.join(patches_path, "__init__.py"), "w", encoding="utf-8"
+                ) as file:
+                    file.write("")
+
             for patch in manifest["patches"]:
                 existing_patch = next(
                     (
                         p
                         for p in old_manifest["patches"]
-                        if p.get('uuid') == patch.get('uuid')
+                        if p.get("uuid") == patch.get("uuid")
                     ),
                     None,
                 )
 
-                if not existing_patch or existing_patch.get('modDate') != patch.get('modDate'):
+                if not existing_patch or existing_patch.get("modDate") != patch.get(
+                    "modDate"
+                ):
                     response = requests.get(f"{repo_base}/patches/{patch['filename']}")
                     if response.status_code != 200:
                         log.error(
@@ -126,10 +138,14 @@ def fetch_repositories():
                         )
                         continue
 
-                    with open(os.path.join(patches_path, patch["filename"]), "wb") as file:
+                    with open(
+                        os.path.join(patches_path, patch["filename"]), "wb"
+                    ) as file:
                         for bytes in response.iter_content(chunk_size=32768):
                             file.write(bytes)
 
-                        log.info(f"Updated patch: {patch['title']} ({patch['filename']})")
+                        log.info(
+                            f"Updated patch: {patch['title']} ({patch['filename']})"
+                        )
 
             log.info(f"Updated repo: {repo['title']}")
