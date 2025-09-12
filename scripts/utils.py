@@ -2,9 +2,10 @@ import subprocess
 from config import log, config, console
 from beaupy import select
 import os
+import yaml
 
 
-def check_java_version():
+def check_java_version() -> None:
     command = ["java", "-version"]
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -18,7 +19,7 @@ def check_java_version():
     log.info(f"found java: {version_line}")
 
 
-def run_cmd(cmd: list[str]):
+def run_cmd(cmd: list[str]) -> None:
     try:
         subprocess.run(cmd, shell=True, check=True, text=True, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
@@ -31,19 +32,19 @@ def run_cmd(cmd: list[str]):
         exit(1)
 
 
-def decompile_apk(apk_path: str):
+def decompile_apk(apk_path: str) -> None:
     run_cmd(
         f"java -jar {config['folders']['tools']}/apktool.jar d -f -o {config['folders']['decompiled']} {apk_path}"
     )
 
 
-def compile_apk(apk_path: str):
+def compile_apk(apk_path: str) -> None:
     run_cmd(
         f"java -jar {config['folders']['tools']}/apktool.jar b -f -o {apk_path} {config['folders']['decompiled']}"
     )
 
 
-def list_apks():
+def list_apks() -> list[str]:
     apks = []
     if not os.path.exists(config["folders"]["apks"]):
         log.info(f"creating `apks` folder: {config['folders']['apks']}")
@@ -71,3 +72,44 @@ def select_apk(apks: list[str]) -> str:
         log.info("patching cancelled")
         exit(0)
     return apk
+
+
+def read_apktool_yml() -> tuple[str, int, int, int]:
+    with open(
+        f"{config['folders']['decompiled']}/apktool.yml", "r", encoding="utf-8"
+    ) as f:
+        data = yaml.load(f.read(), Loader=yaml.Loader)
+        versionName = data.get("versionInfo").get("versionName", "None")
+        versionCode = data.get("versionInfo").get("versionCode", 0)
+        minSdkVersion = data.get("sdkInfo").get("minSdkVersion", 0)
+        targetSdkVersion = data.get("sdkInfo").get("targetSdkVersion", 0)
+
+    return versionName, versionCode, minSdkVersion, targetSdkVersion
+
+
+def save_apktool_yml(
+    versionName: str, versionCode: int, minSdkVersion: int, targetSdkVersion: int
+) -> None:
+    data = None
+    apktool_yml_path = f"{config['folders']['decompiled']}/apktool.yml"
+
+    with open(apktool_yml_path, "r", encoding="utf-8") as f:
+        data = yaml.load(f.read(), Loader=yaml.Loader)
+
+    sdkInfo = {
+        "minSdkVersion": minSdkVersion,
+        "targetSdkVersion": targetSdkVersion,
+    }
+    versionInfo = {
+        "versionName": versionName,
+        "versionCode": versionCode,
+    }
+    data.update(
+        {
+            "sdkInfo": sdkInfo,
+            "versionInfo": versionInfo,
+        }
+    )
+
+    with open(apktool_yml_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, indent=2, Dumper=yaml.Dumper)
