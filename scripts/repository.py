@@ -89,6 +89,14 @@ def fetch_repositories():
                 )
                 continue
 
+            old_manifest: RepoManifest = {}
+            with open(
+                os.path.join(".cache", manifest["repo"]["uuid"], "manifest.json"),
+                "r",
+                encoding="utf-8",
+            ) as file:
+                old_manifest = json.load(manifest, file, indent=4, ensure_ascii=False)
+
             manifest: RepoManifest = response.json()
             with open(
                 os.path.join(".cache", manifest["repo"]["uuid"], "manifest.json"),
@@ -101,19 +109,27 @@ def fetch_repositories():
             repo_base = repo["url"].removesuffix("manifest.json")
             os.makedirs(patches_path, exist_ok=True)
             for patch in manifest["patches"]:
-                response = requests.get(f"{repo_base}/patches/{patch['filename']}")
-                if response.status_code != 200:
-                    log.error(
-                        f"failed get patch {patch['filename']} from repo {repo['title']}, got response code {response.status_code}"
-                    )
-                    continue
+                existing_patch = next(
+                    (
+                        p
+                        for p in old_manifest["patches"]
+                        if p.get('uuid') == patch.get('uuid')
+                    ),
+                    None,
+                )
 
-                with open(os.path.join(patches_path, patch["filename"]), "wb") as file:
-                    for bytes in response.iter_content(chunk_size=32768):
-                        file.write(bytes)
+                if not existing_patch or existing_patch.get('modDate') != patch.get('modDate'):
+                    response = requests.get(f"{repo_base}/patches/{patch['filename']}")
+                    if response.status_code != 200:
+                        log.error(
+                            f"failed get patch {patch['filename']} from repo {repo['title']}, got response code {response.status_code}"
+                        )
+                        continue
 
-                    log.info(
-                        f"Updated patch: {patch['title']} ({patch['filename']})"
-                    )
+                    with open(os.path.join(patches_path, patch["filename"]), "wb") as file:
+                        for bytes in response.iter_content(chunk_size=32768):
+                            file.write(bytes)
+
+                        log.info(f"Updated patch: {patch['title']} ({patch['filename']})")
 
             log.info(f"Updated repo: {repo['title']}")
