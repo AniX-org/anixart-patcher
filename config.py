@@ -21,7 +21,8 @@ parser = argparse.ArgumentParser(prog="anixart patcher")
 parser.add_argument("--config", help="path to config.json file", default="config.json")
 parser.add_argument("--no-decompile", action="store_true")
 parser.add_argument("--no-compile", action="store_true")
-parser.add_argument("--add", help="add a new repo to config.json file", action="store_true")
+parser.add_argument("--repo-add", help="add a new repo to config.json file", type=str, default=None)
+parser.add_argument("--repo-update", help="fetch latest version of all repos", action="store_true")
 args = parser.parse_args()
 
 
@@ -42,9 +43,14 @@ class ConfigXmlNS(TypedDict):
     app: str
 
 
+class RepoList(TypedDict):
+    title: str
+    url: str
+    uuid: str
+
 class ScriptConfig(TypedDict):
     log_level: str
-    repositories: list[str]
+    repositories: list[RepoList]
     tools: list[ConfigTools]
     folders: ConfigFolders
     xml_ns: ConfigXmlNS
