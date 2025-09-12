@@ -23,6 +23,7 @@ parser.add_argument("--no-decompile", action="store_true")
 parser.add_argument("--no-compile", action="store_true")
 parser.add_argument("--repo-add", help="add a new repo to config.json file", type=str, default=None)
 parser.add_argument("--repo-update", help="fetch latest version of all repos", action="store_true")
+parser.add_argument("--apk", help="apk file name to patch", type=str, default=None)
 args = parser.parse_args()
 
 

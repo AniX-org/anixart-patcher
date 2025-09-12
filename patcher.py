@@ -1,7 +1,14 @@
 from scripts.download_tools import check_and_download_all_tools
 from scripts.repository import add_repository, fetch_repositories
-from scripts.utils import check_java_version
-from config import args
+from scripts.utils import (
+    check_java_version,
+    compile_apk,
+    decompile_apk,
+    list_apks,
+    select_apk,
+)
+from config import args, config
+from time import time
 
 if __name__ == "__main__":
     if args.repo_add:
@@ -13,3 +20,11 @@ if __name__ == "__main__":
 
     check_and_download_all_tools()
     check_java_version()
+
+    apk = args.apk or select_apk(list_apks())
+
+    start_time = time()
+    if not args.no_decompile:
+        decompile_apk(f"{config['folders']['apks']}/{apk}")
+    # if not args.no_compile:
+    #     compile_apk(apk)
