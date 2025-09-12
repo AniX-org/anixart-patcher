@@ -91,11 +91,11 @@ def fetch_repositories():
 
             old_manifest: RepoManifest = {}
             with open(
-                os.path.join(".cache", manifest["repo"]["uuid"], "manifest.json"),
+                os.path.join(".cache", repo["uuid"], "manifest.json"),
                 "r",
                 encoding="utf-8",
             ) as file:
-                old_manifest = json.load(manifest, file, indent=4, ensure_ascii=False)
+                old_manifest = json.load(file)
 
             manifest: RepoManifest = response.json()
             with open(
