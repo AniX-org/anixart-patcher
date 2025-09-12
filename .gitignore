@@ -13,3 +13,5 @@ dev.config.json
 release_patches
 release.config.json
 .TRASH
+.cache
+out
