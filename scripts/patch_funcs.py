@@ -64,19 +64,33 @@ progress = Progress(
 
 class PatchStatus(TypedDict):
     name: str
+    uuid: str
     status: bool
 
 
+class PatchGlobals(TypedDict):
+    apk: str
+    app_version_name: str
+    app_version_code: int
+    app_sdk_version_min: int
+    app_sdk_version_max: int
+    patches_enabled: list[PatchMetaData]
+    patches_statuses: list[PatchStatus]
+
+
 def apply_patches_from_repo(
-    repo_uuid: str, patches: list[PatchMetaData], globals: dict
+    repo_uuid: str, patches: list[PatchMetaData], globals: PatchGlobals
 ) -> tuple[RepoManifest, list[PatchStatus]]:
     statuses: list[PatchStatus] = []
     patches = sort_patches_by_priority(patches)
 
     manifest: RepoManifest = json.load(
-        open(f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8")
+        open(
+            f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8"
+        )
     )
 
+    globals['patches_enabled'].extend(patches)
     with progress:
         task = progress.add_task(
             f"applying patches from {manifest['repo']['title']}:",
@@ -89,7 +103,12 @@ def apply_patches_from_repo(
                 f"repos.{repo_uuid.replace("-", "_")}.patches.{patch['filename'][:-3]}"
             )
             status = module.apply(patch["settings"], globals)
-            statuses.append({"name": patch["title"], "status": status})
+            statuses.append(
+                {"name": patch["title"], "uuid": patch["uuid"], "status": status}
+            )
+            globals['patches_statuses'].append(
+                {"name": patch["title"], "uuid": patch["uuid"], "status": status}
+            )
             progress.update(task, advance=1)
 
         progress.update(task, description="patches applied", patch="")
