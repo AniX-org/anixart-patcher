@@ -1,5 +1,6 @@
 from typing import TypedDict, NotRequired, Any
 
+
 class RepoConfig(TypedDict):
     title: str
     url: str
@@ -7,9 +8,11 @@ class RepoConfig(TypedDict):
     modDate: str
     uuid: str
 
+
 class RepoMaintainerConfig(TypedDict):
     maintainer: str
     url: str
+
 
 class PatchMetaData(TypedDict):
     filename: str
@@ -26,9 +29,17 @@ class PatchMetaData(TypedDict):
     tags: list[str]
     settings: NotRequired[dict[str, Any]]
 
+
+class ResourceMetaData(TypedDict):
+    filename: str
+    sha256: str
+
+
 class RepoManifest(TypedDict):
     repo: RepoConfig
     maintainer: RepoMaintainerConfig
     patches: list[PatchMetaData]
+    resources: list[ResourceMetaData]
+
 
 PatchTags: list[str] = ["UI", "Code", "undefined"]

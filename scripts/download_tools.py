@@ -63,7 +63,7 @@ def download_tool(url, tool):
     log.info(f"Requesting {url}")
     response = requests.get(url, stream=True)
     total = int(response.headers.get("content-length", None))
-    task_id = progress.add_task("download", start=False, total=total, filename=tool)
+    task_id = progress.add_task(f"download-{tool}", start=False, total=total, filename=tool)
 
     with open(f"{config['folders']['tools']}/{tool}", "wb") as file:
         progress.start_task(task_id)
