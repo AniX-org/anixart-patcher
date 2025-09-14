@@ -50,9 +50,11 @@ def add_repository(url: str):
     manifest: RepoManifest = response.json()
 
     repo_path = os.path.join("repos", manifest["repo"]["uuid"].replace("-", "_"))
-    if os.path.exists(repo_path):
+    existing_repo = next(
+        (r for r in config["repositories"] if r["uuid"] == manifest["repo"]["uuid"]), None)
+    if os.path.exists(repo_path) or existing_repo is not None:
         log.error(
-            f"Repository {url}, already exists, if you want to update it, run `patcher.py --repo-update`"
+            f"Repository {manifest['repo']['title']} ({url}), already exists, if you want to update it, run `patcher.py --repo-update`"
         )
         exit(1)
 
@@ -80,13 +82,18 @@ def add_repository(url: str):
 
 
 def load_manifest(repo_path: str) -> RepoManifest:
-    with open(
-        os.path.join(repo_path, "manifest.json"),
-        "r",
-        encoding="utf-8",
-    ) as file:
-        return json.load(file)
-
+    try:
+        with open(
+            os.path.join(repo_path, "manifest.json"),
+            "r",
+            encoding="utf-8",
+        ) as file:
+            return json.load(file)
+    except Exception as e:
+        return {
+            "patches": [],
+            "resources": []
+        }
 
 def save_manifest(repo_path: str, manifest: RepoManifest):
     with open(
@@ -109,13 +116,18 @@ def download_file(url: str, path: str, name: str):
         log.error(
             f"Failed to download {name}, got response code {response.status_code}"
         )
+        progress.remove_task(task_id)
         return
 
+    type = path.split("/")[-2]
+    name = path.split("/")[-1]
     with open(path, "wb") as file:
         progress.start_task(task_id)
         for bytes in response.iter_content(chunk_size=32768):
             size = file.write(bytes)
             progress.update(task_id, advance=size)
+    log.info(f"Downloaded {type}: {name}")
+    progress.remove_task(task_id)
 
 
 def download_patch(url: str, repo: RepoManifest, patch: PatchMetaData):
@@ -145,85 +157,83 @@ def download_resource(url: str, repo: RepoManifest, resource: ResourceMetaData):
 
 
 def fetch_repositories():
-    with console.status("[bold green]fetching repositories[/bold green]") as status:
-        status.start()
-        for repo in config["repositories"]:
-            repo_path = os.path.join("repos", repo["uuid"].replace("-", "_"))
-            patches_path = os.path.join(repo_path, "patches")
-            resources_path = os.path.join(repo_path, "resources")
+    log.info("Fetching repositories")
+    for repo in config["repositories"]:
+        repo_path = os.path.join("repos", repo["uuid"].replace("-", "_"))
+        patches_path = os.path.join(repo_path, "patches")
+        resources_path = os.path.join(repo_path, "resources")
 
-            os.makedirs(repo_path, exist_ok=True)
-            os.makedirs(patches_path, exist_ok=True)
-            os.makedirs(resources_path, exist_ok=True)
+        os.makedirs(repo_path, exist_ok=True)
+        os.makedirs(patches_path, exist_ok=True)
+        os.makedirs(resources_path, exist_ok=True)
 
-            log.info(f"Updating repo: `{repo['title']}`")
-            try:
-                response = requests.get(repo["url"])
-                if response.status_code != 200:
-                    log.error(
-                        f"failed to update repo `{repo['title']}`, got response code {response.status_code}"
-                    )
-                    continue
-            except requests.exceptions.RequestException as e:
-                log.error(f"failed to update repo `{repo['title']}`, {e}")
+        log.info(f"Updating repo: `{repo['title']}`")
+        try:
+            response = requests.get(repo["url"])
+            if response.status_code != 200:
+                log.error(
+                    f"failed to update repo `{repo['title']}`, got response code {response.status_code}"
+                )
                 continue
+        except requests.exceptions.RequestException as e:
+            log.error(f"failed to update repo `{repo['title']}`, {e}")
+            continue
 
-            old_manifest = load_manifest(repo_path)
-            new_manifest: RepoManifest = response.json()
-            repo_base_url = repo["url"].removesuffix("manifest.json").removesuffix("/")
+        old_manifest = load_manifest(repo_path)
+        new_manifest: RepoManifest = response.json()
+        repo_base_url = repo["url"].removesuffix("manifest.json").removesuffix("/")
 
-            if not os.path.exists(os.path.join(patches_path, "__init__.py")):
-                with open(
-                    os.path.join(patches_path, "__init__.py"), "w", encoding="utf-8"
-                ) as file:
-                    file.write("")
+        if not os.path.exists(os.path.join(patches_path, "__init__.py")):
+            with open(
+                os.path.join(patches_path, "__init__.py"), "w", encoding="utf-8"
+            ) as file:
+                file.write("")
 
-            with progress:
-                progress.start()
-                for patch in new_manifest["patches"]:
-                    existing_patch = next(
-                        (
-                            p
-                            for p in old_manifest["patches"]
-                            if p.get("uuid") == patch.get("uuid")
-                        ),
-                        None,
+        with progress:
+            progress.start()
+            for patch in new_manifest["patches"]:
+                existing_patch = next(
+                    (
+                        p
+                        for p in old_manifest["patches"]
+                        if p.get("uuid") == patch.get("uuid")
+                    ),
+                    None,
+                )
+                if (
+                    not existing_patch
+                    or existing_patch.get("sha256") != patch.get("sha256")
+                    or not os.path.exists(
+                        os.path.join(patches_path, patch["filename"])
                     )
-                    if (
-                        not existing_patch
-                        or existing_patch.get("sha256") != patch.get("sha256")
-                        or not os.path.exists(
-                            os.path.join(patches_path, patch["filename"])
-                        )
-                    ):
-                        download_patch(
-                            f"{repo_base_url}/patches/{patch['filename']}",
-                            new_manifest,
-                            patch,
-                        )
-                for resource in new_manifest["resources"]:
-                    existing_resource = next(
-                        (
-                            p
-                            for p in old_manifest["resources"]
-                            if p.get("filename") == resource.get("filename")
-                        ),
-                        None,
+                ):
+                    download_patch(
+                        f"{repo_base_url}/patches/{patch['filename']}",
+                        new_manifest,
+                        patch,
                     )
-                    if (
-                        not existing_resource
-                        or existing_resource.get("sha256") != resource.get("sha256")
-                        or not os.path.exists(
-                            os.path.join(resources_path, resource["filename"])
-                        )
-                    ):
-                        download_resource(
-                            f"{repo_base_url}/resources/{resource['filename']}",
-                            new_manifest,
-                            resource,
-                        )
-                progress.stop()
+            for resource in new_manifest["resources"]:
+                existing_resource = next(
+                    (
+                        p
+                        for p in old_manifest["resources"]
+                        if p.get("filename") == resource.get("filename")
+                    ),
+                    None,
+                )
+                if (
+                    not existing_resource
+                    or existing_resource.get("sha256") != resource.get("sha256")
+                    or not os.path.exists(
+                        os.path.join(resources_path, resource["filename"])
+                    )
+                ):
+                    download_resource(
+                        f"{repo_base_url}/resources/{resource['filename']}",
+                        new_manifest,
+                        resource,
+                    )
+            progress.stop()
 
-            save_manifest(repo_path, new_manifest)
-            log.info(f"Updated repo: {repo['title']}")
-        status.stop()
+        save_manifest(repo_path, new_manifest)
+        log.info(f"Updated repo: {repo['title']}")
