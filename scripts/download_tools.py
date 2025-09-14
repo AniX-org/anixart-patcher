@@ -70,6 +70,7 @@ def download_tool(url, tool):
         for bytes in response.iter_content(chunk_size=32768):
             size = file.write(bytes)
             progress.update(task_id, advance=size)
+    progress.remove_task(task_id)
 
     if os.name == "posix":
         os.chmod(f"{config['folders']['tools']}/{tool}", 0o744)
@@ -77,6 +78,7 @@ def download_tool(url, tool):
 def check_and_download_all_tools():
     check_if_tools_folder_exist()
     for tool in config["tools"]:
-        prepare_download_tool(tool["url"], tool["tool"])
-        log.info(f"`{tool["tool"]}` downloaded")
+        if os.name in tool["os"]:
+            prepare_download_tool(tool["url"], tool["tool"])
+            log.info(f"`{tool["tool"]}` downloaded")
     log.info("all tools downloaded")

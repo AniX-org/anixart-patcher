@@ -31,6 +31,7 @@ args = parser.parse_args()
 class ConfigTools(TypedDict):
     tool: str
     url: str
+    os: list[str]
 
 
 class ConfigFolders(TypedDict):
