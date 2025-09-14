@@ -28,12 +28,15 @@ class Patch:
 
 
 def get_patch_list_from_repo(repo_uuid: str) -> list[PatchMetaData]:
-    return sorted(
+    manifest_patches = sorted(
         json.load(open(f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8"))[
             "patches"
         ],
         key=lambda x: x["title"],
     )
+    patch_files = os.listdir(f"repos/{repo_uuid.replace('-', '_')}/patches") or []
+    existing_patches = [p for p in manifest_patches if p["filename"] in patch_files]
+    return sorted(existing_patches, key=lambda x: x["priority"])
 
 
 def find_patch_in_repo(repo_uuid: str, title: str) -> PatchMetaData:
