@@ -157,11 +157,15 @@ def fetch_repositories():
             os.makedirs(resources_path, exist_ok=True)
 
             log.info(f"Updating repo: `{repo['title']}`")
-            response = requests.get(repo["url"])
-            if response.status_code != 200:
-                log.error(
-                    f"failed to update repo `{repo['title']}`, got response code {response.status_code}"
-                )
+            try:
+                response = requests.get(repo["url"])
+                if response.status_code != 200:
+                    log.error(
+                        f"failed to update repo `{repo['title']}`, got response code {response.status_code}"
+                    )
+                    continue
+            except requests.exceptions.RequestException as e:
+                log.error(f"failed to update repo `{repo['title']}`, {e}")
                 continue
 
             old_manifest = load_manifest(repo_path)

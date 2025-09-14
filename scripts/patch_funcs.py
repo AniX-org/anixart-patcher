@@ -5,7 +5,7 @@ from repo_types import PatchMetaData, RepoManifest
 from config import config, log
 from beaupy import select_multiple
 from rich.progress import BarColumn, Progress, TextColumn
-
+import os
 
 class Patch:
     def __init__(self, name, pkg):
@@ -29,7 +29,7 @@ class Patch:
 
 def get_patch_list_from_repo(repo_uuid: str) -> list[PatchMetaData]:
     return sorted(
-        json.load(open(f"repos/{repo_uuid}/manifest.json", "r", encoding="utf-8"))[
+        json.load(open(f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8"))[
             "patches"
         ],
         key=lambda x: x["title"],
@@ -90,7 +90,7 @@ def apply_patches_from_repo(
         )
     )
 
-    globals['patches_enabled'].extend(patches)
+    globals["patches_enabled"].extend(patches)
     with progress:
         task = progress.add_task(
             f"applying patches from {manifest['repo']['title']}:",
@@ -106,7 +106,7 @@ def apply_patches_from_repo(
             statuses.append(
                 {"name": patch["title"], "uuid": patch["uuid"], "status": status}
             )
-            globals['patches_statuses'].append(
+            globals["patches_statuses"].append(
                 {"name": patch["title"], "uuid": patch["uuid"], "status": status}
             )
             progress.update(task, advance=1)
@@ -114,3 +114,25 @@ def apply_patches_from_repo(
         progress.update(task, description="patches applied", patch="")
 
     return manifest, statuses
+
+
+def select_and_apply_patches(globals: PatchGlobals) -> list[PatchStatus]:
+    toApply: dict[str, list[PatchMetaData]] = {}
+    statuses = []
+
+    for repo in config['repositories']:
+        if not os.path.exists(f"repos/{repo['uuid'].replace("-", "_")}/patches/__init__.py"):
+            continue
+        patches = select_patches_from_repo(repo["uuid"])
+        if len(patches) == 0:
+            continue
+        toApply[repo['uuid']] = patches
+
+    if len(toApply) == 0:
+        return []
+
+    for repo, patches in toApply.items():
+        manifest, patchStatuses = apply_patches_from_repo(repo, patches, globals)
+        statuses.extend(patchStatuses)
+
+    return statuses
