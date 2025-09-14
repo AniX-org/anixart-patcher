@@ -7,6 +7,7 @@ from beaupy import select_multiple
 from rich.progress import BarColumn, Progress, TextColumn
 import os
 
+
 class Patch:
     def __init__(self, name, pkg):
         self.name = name
@@ -28,15 +29,18 @@ class Patch:
 
 
 def get_patch_list_from_repo(repo_uuid: str) -> list[PatchMetaData]:
-    manifest_patches = sorted(
-        json.load(open(f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8"))[
-            "patches"
-        ],
-        key=lambda x: x["title"],
+    manifest_patches = (
+        json.load(
+            open(
+                f"repos/{repo_uuid.replace("-", "_")}/manifest.json",
+                "r",
+                encoding="utf-8",
+            )
+        )["patches"],
     )
     patch_files = os.listdir(f"repos/{repo_uuid.replace('-', '_')}/patches") or []
     existing_patches = [p for p in manifest_patches if p["filename"] in patch_files]
-    return sorted(existing_patches, key=lambda x: x["priority"])
+    return sorted(existing_patches, key=lambda x: x["title"])
 
 
 def find_patch_in_repo(repo_uuid: str, title: str) -> PatchMetaData:
@@ -123,13 +127,15 @@ def select_and_apply_patches(globals: PatchGlobals) -> list[PatchStatus]:
     toApply: dict[str, list[PatchMetaData]] = {}
     statuses = []
 
-    for repo in config['repositories']:
-        if not os.path.exists(f"repos/{repo['uuid'].replace("-", "_")}/patches/__init__.py"):
+    for repo in config["repositories"]:
+        if not os.path.exists(
+            f"repos/{repo['uuid'].replace("-", "_")}/patches/__init__.py"
+        ):
             continue
         patches = select_patches_from_repo(repo["uuid"])
         if len(patches) == 0:
             continue
-        toApply[repo['uuid']] = patches
+        toApply[repo["uuid"]] = patches
 
     if len(toApply) == 0:
         return []
