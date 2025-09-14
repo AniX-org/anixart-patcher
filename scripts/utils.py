@@ -44,6 +44,34 @@ def compile_apk(apk_path: str) -> None:
     )
 
 
+def sign_apk(apk_path: str) -> None:
+    apk_aligned_path = apk_path.replace(".apk", "-aligned.apk")
+    apk_signed_path = apk_path.replace(".apk", "-aligned-signed.apk")
+    if os.name == "nt":
+        run_cmd(
+            f"{config['folders']['tools']}/zipalign.exe -v 4 {apk_path} {apk_aligned_path}"
+        )
+    elif os.name == "posix":
+        run_cmd(
+            f"{config['folders']['tools']}/zipalign -p 4 {apk_path} {apk_aligned_path}"
+        )
+    else:
+        log.fatal("os not supported: %s", os.name)
+        exit(1)
+
+    cmd = f"java -jar {config['folders']['tools']}/apksigner.jar \
+        sign --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true"
+    cmd += f" --ks {os.getenv("KEYSTORE_PATH", "keystore.jks")}"
+    if os.getenv("KEYSTORE_PASS"):
+        cmd += f" --ks-pass env:KEYSTORE_PASS"
+    if os.getenv("KEYSTORE_KEY_ALIAS"):
+        cmd += f" --ks-key-alias {os.getenv('KEYSTORE_KEY_ALIAS')}"
+    if os.getenv("KEYSTORE_KEY_PASSWORD"):
+        cmd += f" --key-pass pass:{os.getenv('KEYSTORE_KEY_PASSWORD')}"
+    cmd += f" --out {apk_signed_path} {apk_aligned_path}"
+    run_cmd(cmd)
+
+
 def list_apks() -> list[str]:
     apks = []
     if not os.path.exists(config["folders"]["apks"]):

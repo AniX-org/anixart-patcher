@@ -71,6 +71,8 @@ def download_tool(url, tool):
             size = file.write(bytes)
             progress.update(task_id, advance=size)
 
+    if os.name == "posix":
+        os.chmod(f"{config['folders']['tools']}/{tool}", 0o744)
 
 def check_and_download_all_tools():
     check_if_tools_folder_exist()

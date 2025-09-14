@@ -8,9 +8,12 @@ from scripts.utils import (
     list_apks,
     read_apktool_yml,
     select_apk,
+    sign_apk,
 )
 from config import args, config, log
-from time import time
+from beaupy import confirm
+import shutil
+import os
 
 if __name__ == "__main__":
     if args.repo_add:
@@ -19,6 +22,14 @@ if __name__ == "__main__":
     if args.repo_update:
         fetch_repositories()
         exit(0)
+    if args.sign_only:
+        outs = os.listdir(config["folders"]["out"])
+        for out in outs:
+            if out.endswith("-patched.apk"):
+                sign_apk(f"{config['folders']['out']}/{out}")
+            else:
+                os.remove(f"{config['folders']['out']}/{out}")
+        exit(0)
 
     check_and_download_all_tools()
     check_java_version()
@@ -26,11 +37,10 @@ if __name__ == "__main__":
     apk = args.apk or select_apk(list_apks())
     log.info(f"selected apk: {apk}")
 
-    start_time = time()
     if not args.no_decompile:
+        log.info("Decompile APK")
         decompile_apk(f"{config['folders']['apks']}/{apk}")
-    # if not args.no_compile:
-    #     compile_apk(apk)
+
     versionName, versionCode, sdkMin, sdkMax = read_apktool_yml()
     globals: PatchGlobals = {
         "apk": apk,
@@ -43,8 +53,22 @@ if __name__ == "__main__":
     }
 
     statuses = select_and_apply_patches(globals)
-
     for status in statuses:
         log.info(f"{status['name']} - {status['status']}")
 
-    log.info(f"patching took {int(time() - start_time)} seconds")
+    if not all(status["status"] for status in statuses):
+        log.warning("Not all patches were applied, do you want to continue?")
+        if not confirm("", "y", "n"):
+            log.info("Cancelled")
+            exit(0)
+
+    if not args.no_compile:
+        shutil.rmtree(config["folders"]["out"], ignore_errors=True)
+        newApk = apk.removesuffix(".apk") + "-patched.apk"
+        log.info("Compile APK")
+        compile_apk(f"{config['folders']['out']}/{newApk}")
+        log.info("Zipalign and Sign APK")
+        sign_apk(f"{config['folders']['out']}/{newApk}")
+
+    log.info("Finished")
+    exit(0)

@@ -7,8 +7,20 @@
             "url": "https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.12.0.jar"
         },
         {
-            "tool": "uber-apk-signer.jar",
-            "url": "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar"
+            "tool": "apksigner.jar",
+            "url": "https://github.com/AniX-org/apk-standalone-tools/raw/refs/heads/main/apksigner.jar"
+        },
+        {
+            "tool": "zipalign.exe",
+            "url": "https://github.com/AniX-org/apk-standalone-tools/raw/refs/heads/main/zipalign.exe"
+        },
+        {
+            "tool": "zipalign",
+            "url": "https://github.com/AniX-org/apk-standalone-tools/raw/refs/heads/main/zipalign"
+        },
+        {
+            "tool": "libc++.so",
+            "url": "https://github.com/AniX-org/apk-standalone-tools/raw/refs/heads/main/libc++.so"
         }
     ],
     "folders": {
