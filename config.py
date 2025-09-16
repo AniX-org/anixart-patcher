@@ -24,6 +24,7 @@ parser.add_argument("--no-compile", action="store_true")
 parser.add_argument("--sign-only", action="store_true")
 parser.add_argument("--repo-add", help="add a new repo to config.json file", type=str, default=None)
 parser.add_argument("--repo-update", help="fetch latest version of all repos", action="store_true")
+parser.add_argument("--list", help="list all patches", choices=["compact", "full"], default=None)
 parser.add_argument("--apk", help="apk file name to patch", type=str, default=None)
 args = parser.parse_args()
 

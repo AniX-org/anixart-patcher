@@ -1,5 +1,5 @@
 from scripts.download_tools import check_and_download_all_tools
-from scripts.patch_funcs import PatchGlobals, select_and_apply_patches
+from scripts.patch_funcs import PatchGlobals, print_patches, select_and_apply_patches
 from scripts.repository import add_repository, fetch_repositories
 from scripts.utils import (
     check_java_version,
@@ -29,6 +29,9 @@ if __name__ == "__main__":
                 sign_apk(f"{config['folders']['out']}/{out}")
             else:
                 os.remove(f"{config['folders']['out']}/{out}")
+        exit(0)
+    if args.list:
+        print_patches()
         exit(0)
 
     check_and_download_all_tools()

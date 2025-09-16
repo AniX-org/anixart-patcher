@@ -2,11 +2,11 @@ import importlib
 import json
 from typing import TypedDict
 from repo_types import PatchMetaData, RepoManifest
-from config import config, log
+from config import config, log, args, console
 from beaupy import select_multiple
 from rich.progress import BarColumn, Progress, TextColumn
 import os
-
+import textwrap
 
 class Patch:
     def __init__(self, name, pkg):
@@ -143,3 +143,32 @@ def select_and_apply_patches(globals: PatchGlobals) -> list[PatchStatus]:
         statuses.extend(patchStatuses)
 
     return statuses
+
+
+def print_patches():
+    for repo in config["repositories"]:
+        patches = get_patch_list_from_repo(repo["uuid"])
+        longest_title = max(len(p["title"]) for p in patches)
+        longest_filename = max(len(p["filename"]) for p in patches)
+
+        console.print(f"┌──{"":─^{longest_title+longest_filename+36+9+5}}────┐")
+        console.print(f"│  {"REPOSITORY":^{longest_title+longest_filename+36+9+9}}│")
+        console.print(f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┬─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤")
+        console.print(f"│  {"TITLE":^{(longest_title+longest_filename+36+9+6)/2}} │ {"UUID":^{(longest_title+longest_filename+36+9+6)/2}} │")
+        console.print(f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┼─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤")
+        console.print(f"│  {repo['title']:^{longest_title+longest_filename-4}} │ {repo['uuid']:^{(36+9+9)}} │")
+        console.print(f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┴─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤")
+        console.print(f"│  {"PATCHES":^{longest_title+longest_filename+36+9+9}}│")
+        console.print(f"├──{"─":─^{longest_title}}─┬─{"─":─^{longest_filename}}─┬─{"─":─^36}─┬─{"─":─^9}┤")
+        console.print(f"│  {"TITLE":^{longest_title}} │ {"FILENAME":^{longest_filename}} │ {"UUID":^36} │ PRIORITY │")
+        console.print(f"├──{"─":─^{longest_title}}─┼─{"─":─^{longest_filename}}─┼─{"─":─^36}─┼─{"─":─^9}┤")
+        for index, patch in enumerate(patches):
+            console.print(f"│  [bold]{patch['title']:<{longest_title}}[/bold] │ {patch['filename']:<{longest_filename}} │ {patch['uuid']} │ {patch['priority']:<9}│")
+            if args.list == "full":
+                desc = textwrap.wrap(patch['description'], width=longest_title)
+                for line in desc:
+                    console.print(f"│  {line:<{longest_title}} │ {"":^{longest_filename}} │ {"":^36} │ {"":^9}│")
+                console.print(f"│  by {patch['author']:<{longest_title-3}} │ {"":^{longest_filename}} │ {"":^36} │ {"":^9}│")
+                if index != len(patches) - 1:
+                    console.print(f"├──{"─":─^{longest_title}}─┼─{"─":─^{longest_filename}}─┼─{"─":─^36}─┼─{"─":─^9}┤")
+        console.print(f"└──{"─":─^{longest_title}}─┴─{"─":─^{longest_filename}}─┴─{"─":─^36}─┴─{"─":─^9}┘")
