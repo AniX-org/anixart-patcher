@@ -8,6 +8,7 @@ from rich.progress import BarColumn, Progress, TextColumn
 import os
 import textwrap
 
+
 class Patch:
     def __init__(self, name, pkg):
         self.name = name
@@ -81,6 +82,9 @@ class PatchGlobals(TypedDict):
     app_sdk_version_max: int
     patches_enabled: list[PatchMetaData]
     patches_statuses: list[PatchStatus]
+    settings_override: dict[
+        str, dict[str, dict]
+    ]  # repo_uuid: {patch_uuid: {setting: value}}
 
 
 def apply_patches_from_repo(
@@ -94,6 +98,16 @@ def apply_patches_from_repo(
             f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8"
         )
     )
+
+    if globals["settings_override"]:
+        for patch in patches:
+            if patch["uuid"] in globals["settings_override"][repo_uuid]["settings"]:
+                patch["settings"] = globals["settings_override"][repo_uuid]["settings"][
+                    patch["uuid"]
+                ]["settings"]
+                patch["priority"] = globals["settings_override"][repo_uuid]["settings"][
+                    patch["uuid"]
+                ]["priority"]
 
     globals["patches_enabled"].extend(patches)
     with progress:
@@ -153,22 +167,67 @@ def print_patches():
 
         console.print(f"┌──{"":─^{longest_title+longest_filename+36+9+5}}────┐")
         console.print(f"│  {"REPOSITORY":^{longest_title+longest_filename+36+9+9}}│")
-        console.print(f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┬─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤")
-        console.print(f"│  {"TITLE":^{(longest_title+longest_filename+36+9+6)/2}} │ {"UUID":^{(longest_title+longest_filename+36+9+6)/2}} │")
-        console.print(f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┼─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤")
-        console.print(f"│  {repo['title']:^{longest_title+longest_filename-4}} │ {repo['uuid']:^{(36+9+9)}} │")
-        console.print(f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┴─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤")
+        console.print(
+            f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┬─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤"
+        )
+        console.print(
+            f"│  {"TITLE":^{(longest_title+longest_filename+36+9+6)/2}} │ {"UUID":^{(longest_title+longest_filename+36+9+6)/2}} │"
+        )
+        console.print(
+            f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┼─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤"
+        )
+        console.print(
+            f"│  {repo['title']:^{longest_title+longest_filename-4}} │ {repo['uuid']:^{(36+9+9)}} │"
+        )
+        console.print(
+            f"├──{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┴─{"─":─^{(longest_title+longest_filename+36+9+6)/2}}─┤"
+        )
         console.print(f"│  {"PATCHES":^{longest_title+longest_filename+36+9+9}}│")
-        console.print(f"├──{"─":─^{longest_title}}─┬─{"─":─^{longest_filename}}─┬─{"─":─^36}─┬─{"─":─^9}┤")
-        console.print(f"│  {"TITLE":^{longest_title}} │ {"FILENAME":^{longest_filename}} │ {"UUID":^36} │ PRIORITY │")
-        console.print(f"├──{"─":─^{longest_title}}─┼─{"─":─^{longest_filename}}─┼─{"─":─^36}─┼─{"─":─^9}┤")
+        console.print(
+            f"├──{"─":─^{longest_title}}─┬─{"─":─^{longest_filename}}─┬─{"─":─^36}─┬─{"─":─^9}┤"
+        )
+        console.print(
+            f"│  {"TITLE":^{longest_title}} │ {"FILENAME":^{longest_filename}} │ {"UUID":^36} │ PRIORITY │"
+        )
+        console.print(
+            f"├──{"─":─^{longest_title}}─┼─{"─":─^{longest_filename}}─┼─{"─":─^36}─┼─{"─":─^9}┤"
+        )
         for index, patch in enumerate(patches):
-            console.print(f"│  [bold]{patch['title']:<{longest_title}}[/bold] │ {patch['filename']:<{longest_filename}} │ {patch['uuid']} │ {patch['priority']:<9}│")
+            console.print(
+                f"│  [bold]{patch['title']:<{longest_title}}[/bold] │ {patch['filename']:<{longest_filename}} │ {patch['uuid']} │ {patch['priority']:<9}│"
+            )
             if args.list == "full":
-                desc = textwrap.wrap(patch['description'], width=longest_title)
+                desc = textwrap.wrap(patch["description"], width=longest_title)
                 for line in desc:
-                    console.print(f"│  {line:<{longest_title}} │ {"":^{longest_filename}} │ {"":^36} │ {"":^9}│")
-                console.print(f"│  by {patch['author']:<{longest_title-3}} │ {"":^{longest_filename}} │ {"":^36} │ {"":^9}│")
+                    console.print(
+                        f"│  {line:<{longest_title}} │ {"":^{longest_filename}} │ {"":^36} │ {"":^9}│"
+                    )
+                console.print(
+                    f"│  by {patch['author']:<{longest_title-3}} │ {"":^{longest_filename}} │ {"":^36} │ {"":^9}│"
+                )
                 if index != len(patches) - 1:
-                    console.print(f"├──{"─":─^{longest_title}}─┼─{"─":─^{longest_filename}}─┼─{"─":─^36}─┼─{"─":─^9}┤")
-        console.print(f"└──{"─":─^{longest_title}}─┴─{"─":─^{longest_filename}}─┴─{"─":─^36}─┴─{"─":─^9}┘")
+                    console.print(
+                        f"├──{"─":─^{longest_title}}─┼─{"─":─^{longest_filename}}─┼─{"─":─^36}─┼─{"─":─^9}┤"
+                    )
+        console.print(
+            f"└──{"─":─^{longest_title}}─┴─{"─":─^{longest_filename}}─┴─{"─":─^36}─┴─{"─":─^9}┘"
+        )
+
+
+def generate_settings_file():
+    settings = {}
+    for repo in config["repositories"]:
+        patches = get_patch_list_from_repo(repo["uuid"])
+        settings[repo["uuid"]] = {
+            "title": repo["title"],
+            "settings": {},
+        }
+        for patch in patches:
+            settings[repo["uuid"]]["settings"][patch["uuid"]] = {
+                "title": patch["title"],
+                "filename": patch["filename"],
+                "priority": patch["priority"],
+                "settings": patch["settings"],
+            }
+    with open(args.settings_file or "settings.json", "w") as f:
+        json.dump(settings, f, indent=4, ensure_ascii=False)

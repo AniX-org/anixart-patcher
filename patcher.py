@@ -1,5 +1,10 @@
 from scripts.download_tools import check_and_download_all_tools
-from scripts.patch_funcs import PatchGlobals, print_patches, select_and_apply_patches
+from scripts.patch_funcs import (
+    PatchGlobals,
+    generate_settings_file,
+    print_patches,
+    select_and_apply_patches,
+)
 from scripts.repository import add_repository, fetch_repositories
 from scripts.utils import (
     check_java_version,
@@ -14,6 +19,7 @@ from config import args, config, log
 from beaupy import confirm
 import shutil
 import os
+import json
 
 if __name__ == "__main__":
     if args.repo_add:
@@ -32,6 +38,9 @@ if __name__ == "__main__":
         exit(0)
     if args.list:
         print_patches()
+        exit(0)
+    if args.generate_settings_file:
+        generate_settings_file()
         exit(0)
 
     check_and_download_all_tools()
@@ -53,7 +62,12 @@ if __name__ == "__main__":
         "app_sdk_version_max": sdkMax,
         "patches_enabled": [],
         "patches_statuses": [],
+        "settings_override": None,
     }
+
+    if args.settings_file:
+        with open(args.settings_file, "r", encoding="utf-8") as file:
+            globals["settings_override"] = json.loads(file.read())
 
     statuses = select_and_apply_patches(globals)
     for status in statuses:

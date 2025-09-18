@@ -16,3 +16,4 @@ release.config.json
 .cache
 out
 repos
+settings*.json
