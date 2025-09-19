@@ -51,7 +51,9 @@ def add_repository(url: str):
 
     repo_path = os.path.join("repos", manifest["repo"]["uuid"].replace("-", "_"))
     existing_repo = next(
-        (r for r in config["repositories"] if r["uuid"] == manifest["repo"]["uuid"]), None)
+        (r for r in config["repositories"] if r["uuid"] == manifest["repo"]["uuid"]),
+        None,
+    )
     if os.path.exists(repo_path) or existing_repo is not None:
         log.error(
             f"Repository {manifest['repo']['title']} ({url}), already exists, if you want to update it, run `patcher.py --repo-update`"
@@ -90,10 +92,8 @@ def load_manifest(repo_path: str) -> RepoManifest:
         ) as file:
             return json.load(file)
     except Exception as e:
-        return {
-            "patches": [],
-            "resources": []
-        }
+        return {"patches": [], "resources": []}
+
 
 def save_manifest(repo_path: str, manifest: RepoManifest):
     with open(
@@ -144,12 +144,20 @@ def download_patch(url: str, repo: RepoManifest, patch: PatchMetaData):
 
 
 def download_resource(url: str, repo: RepoManifest, resource: ResourceMetaData):
+    res_dir = resource["directory"]
+    if not res_dir.endswith("/"):
+        res_dir += "/"
+    res_dir_path = os.path.join(
+        "repos",
+        repo["repo"]["uuid"].replace("-", "_"),
+        f"resources{res_dir}",
+    )
+
+    os.makedirs(res_dir_path, exist_ok=True)
     download_file(
         url,
         os.path.join(
-            "repos",
-            repo["repo"]["uuid"].replace("-", "_"),
-            "resources",
+            res_dir_path,
             resource["filename"],
         ),
         resource["filename"],
@@ -203,9 +211,7 @@ def fetch_repositories():
                 if (
                     not existing_patch
                     or existing_patch.get("sha256") != patch.get("sha256")
-                    or not os.path.exists(
-                        os.path.join(patches_path, patch["filename"])
-                    )
+                    or not os.path.exists(os.path.join(patches_path, patch["filename"]))
                 ):
                     download_patch(
                         f"{repo_base_url}/patches/{patch['filename']}",
@@ -213,6 +219,10 @@ def fetch_repositories():
                         patch,
                     )
             for resource in new_manifest["resources"]:
+                res_dir = resource["directory"]
+                if not res_dir.endswith("/"):
+                    res_dir += "/"
+
                 existing_resource = next(
                     (
                         p
@@ -225,11 +235,11 @@ def fetch_repositories():
                     not existing_resource
                     or existing_resource.get("sha256") != resource.get("sha256")
                     or not os.path.exists(
-                        os.path.join(resources_path, resource["filename"])
+                        f"{resources_path}{res_dir}{resource['filename']}"
                     )
                 ):
                     download_resource(
-                        f"{repo_base_url}/resources/{resource['filename']}",
+                        f"{repo_base_url}/resources{res_dir}{resource['filename']}",
                         new_manifest,
                         resource,
                     )

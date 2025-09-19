@@ -32,6 +32,7 @@ class PatchMetaData(TypedDict):
 
 class ResourceMetaData(TypedDict):
     filename: str
+    directory: str
     sha256: str
 
 
