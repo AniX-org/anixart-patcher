@@ -19,17 +19,27 @@ def check_java_version() -> None:
     log.info(f"found java: {version_line}")
 
 
-def run_cmd(cmd: list[str]) -> None:
+def run_cmd(cmd: list[str], ignore_error: bool = False) -> bool | None:
     try:
         subprocess.run(cmd, shell=True, check=True, text=True, stderr=subprocess.PIPE)
+        return True
     except subprocess.CalledProcessError as e:
-        log.fatal(
-            "error of running a command: %s :: %s",
-            " ".join(cmd),
-            e.stderr,
-            exc_info=True,
-        )
-        exit(1)
+        if not ignore_error:
+            log.fatal(
+                "error of running a command: %s :: %s",
+                " ".join(cmd),
+                e.stderr,
+                exc_info=True,
+            )
+            exit(1)
+        else:
+            log.error(
+                "error of running a command: %s :: %s",
+                " ".join(cmd),
+                e.stderr,
+                exc_info=True,
+            )
+            return False
 
 
 def decompile_apk(apk_path: str) -> None:
