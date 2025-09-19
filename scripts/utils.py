@@ -154,20 +154,75 @@ def save_apktool_yml(
         yaml.dump(data, f, indent=2, Dumper=yaml.Dumper)
 
 
-def set_color(name: str, value: str, root) -> None:
-    for element in root:
-        if element.tag == "color" and element.attrib.get("name", None) == name:
-            element.text = value
-            break
-
-
 def change_colors(values: dict[str, str], mode: str = "") -> None:
     file_path = f"{config['folders']['decompiled']}/res/values{mode}/colors.xml"
     parser = etree.XMLParser(remove_blank_text=True)
     tree = etree.parse(file_path, parser)
     root = tree.getroot()
     for value in values.items():
-        set_color(value[0], value[1], root)
+        root.find(f".//color[@name='{value[0]}']").text = value[1]
+    tree.write(
+        file_path,
+        pretty_print=True,
+        xml_declaration=True,
+        encoding="utf-8",
+    )
+
+
+def change_attributes(file_path: str, values: dict[str, str], xpath=".//*") -> None:
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.parse(file_path, parser)
+    root = tree.getroot()
+    for value in values.items():
+        root.find(f"{xpath}[@{value[0]}]").set(value[0], value[1])
+    tree.write(
+        file_path,
+        pretty_print=True,
+        xml_declaration=True,
+        encoding="utf-8",
+    )
+
+
+def change_attributes_all(file_path: str, values: dict[str, str], xpath=".//*") -> None:
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.parse(file_path, parser)
+    root = tree.getroot()
+    for value in values.items():
+        for el in root.findall(f"{xpath}[@{value[0]}]"):
+            el.set(value[0], value[1])
+    tree.write(
+        file_path,
+        pretty_print=True,
+        xml_declaration=True,
+        encoding="utf-8",
+    )
+
+
+def change_attributes_with_value(
+    file_path: str, values: dict[str, str], search_value: str, xpath=".//*"
+) -> None:
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.parse(file_path, parser)
+    root = tree.getroot()
+    for value in values.items():
+        root.find(f"{xpath}[@{value[0]}='{search_value}']").set(value[0], value[1])
+    tree.write(
+        file_path,
+        pretty_print=True,
+        xml_declaration=True,
+        encoding="utf-8",
+    )
+
+
+def change_attributes_all_with_value(
+    file_path: str, values: dict[str, str], search_value: str, xpath=".//*"
+) -> None:
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.parse(file_path, parser)
+    root = tree.getroot()
+    for value in values.items():
+        for el in root.findall(f"{xpath}[@{value[0]}='{search_value}']"):
+            el.set(value[0], value[1])
     tree.write(
         file_path,
         pretty_print=True,
