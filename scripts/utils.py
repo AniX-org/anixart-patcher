@@ -3,6 +3,7 @@ from config import log, config, console
 from beaupy import select
 import os
 import yaml
+from lxml import etree
 
 
 def check_java_version() -> None:
@@ -151,3 +152,25 @@ def save_apktool_yml(
 
     with open(apktool_yml_path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, indent=2, Dumper=yaml.Dumper)
+
+
+def set_color(name: str, value: str, root) -> None:
+    for element in root:
+        if element.tag == "color" and element.attrib.get("name", None) == name:
+            element.text = value
+            break
+
+
+def change_colors(values: dict[str, str]) -> None:
+    file_path = f"{config['folders']['decompiled']}/res/values/colors.xml"
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.parse(file_path, parser)
+    root = tree.getroot()
+    for value in values.items():
+        set_color(value[0], value[1], root)
+    tree.write(
+        file_path,
+        pretty_print=True,
+        xml_declaration=True,
+        encoding="utf-8",
+    )
