@@ -174,3 +174,8 @@ def change_colors(values: dict[str, str]) -> None:
         xml_declaration=True,
         encoding="utf-8",
     )
+
+def hex_to_lottie(hex_color: str) -> tuple[float, float, float]:
+    hex_color = hex_color.lstrip('#')
+    hex_color = hex_color[2:]
+    return int(hex_color[:2], 16) / 255.0, int(hex_color[2:4], 16) / 255.0, int(hex_color[4:6], 16) / 255.0
