@@ -161,8 +161,8 @@ def set_color(name: str, value: str, root) -> None:
             break
 
 
-def change_colors(values: dict[str, str]) -> None:
-    file_path = f"{config['folders']['decompiled']}/res/values/colors.xml"
+def change_colors(values: dict[str, str], mode: str = "") -> None:
+    file_path = f"{config['folders']['decompiled']}/res/values{mode}/colors.xml"
     parser = etree.XMLParser(remove_blank_text=True)
     tree = etree.parse(file_path, parser)
     root = tree.getroot()
@@ -175,7 +175,12 @@ def change_colors(values: dict[str, str]) -> None:
         encoding="utf-8",
     )
 
+
 def hex_to_lottie(hex_color: str) -> tuple[float, float, float]:
-    hex_color = hex_color.lstrip('#')
+    hex_color = hex_color.lstrip("#")
     hex_color = hex_color[2:]
-    return int(hex_color[:2], 16) / 255.0, int(hex_color[2:4], 16) / 255.0, int(hex_color[4:6], 16) / 255.0
+    return (
+        int(hex_color[:2], 16) / 255.0,
+        int(hex_color[2:4], 16) / 255.0,
+        int(hex_color[4:6], 16) / 255.0,
+    )
