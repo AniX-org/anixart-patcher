@@ -85,6 +85,7 @@ class PatchGlobals(TypedDict):
     settings_override: dict[
         str, dict[str, dict]
     ]  # repo_uuid: {patch_uuid: {setting: value}}
+    resource_path: str
 
 
 def apply_patches_from_repo(
@@ -98,6 +99,7 @@ def apply_patches_from_repo(
             f"repos/{repo_uuid.replace("-", "_")}/manifest.json", "r", encoding="utf-8"
         )
     )
+    globals["resource_path"] = f"repos/{repo_uuid.replace('-', '_')}/resources"
 
     if globals["settings_override"]:
         for patch in patches:
