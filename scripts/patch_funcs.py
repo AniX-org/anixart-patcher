@@ -49,7 +49,9 @@ def find_patch_in_repo(repo_uuid: str, title: str) -> PatchMetaData:
 
 
 def sort_patches_by_priority(patches: list[PatchMetaData]) -> list[PatchMetaData]:
-    return sorted(patches, key=lambda x: x["priority"])
+    patches = sorted(patches, key=lambda x: x["priority"])
+    patches.reverse()
+    return patches
 
 
 def select_patches_from_repo(repo_uuid: str) -> list[PatchMetaData]:
